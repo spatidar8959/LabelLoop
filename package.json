@@ -1,0 +1,17 @@
+{
+  "name": "shelfscope-visual-dataset-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first image annotation workspace with Gemini-assisted annotations.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@google/genai": "^2.32.0",
+    "dotenv": "^16.6.1"
+  }
+}

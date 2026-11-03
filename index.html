@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#f6f7f9" />
+<title>ShelfScope — Visual Dataset Studio</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --panel-soft: #fafbfc;
+    --line: #e6e9ee;
+    --line-strong: #d4dae3;
+    --text: #17202d;
+    --muted: #788393;
+    --accent: #315efb;
+    --accent-soft: #edf1ff;
+    --green: #16865c;
+    --green-soft: #e9f7f0;
+    --amber: #b7791f;
+    --amber-soft: #fff5df;
+    --red: #c44f4f;
+    --shadow: 0 8px 28px rgba(22, 31, 46, .06);
+    --radius: 13px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  button, input, select, textarea { font: inherit; }
+  button { cursor: pointer; }
+  .app { height: 100%; min-height: 560px; display: flex; flex-direction: column; }
+  .topbar { height: 62px; min-height: 62px; display: flex; align-items: center; gap: 18px; padding: 0 20px; background: #fff; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 208px; }
+  .brand-mark { width: 29px; height: 29px; border-radius: 8px; color: #fff; background: var(--accent); display: grid; place-items: center; font-weight: 800; letter-spacing: -.7px; }
+  .brand-name { font-size: 15px; font-weight: 750; letter-spacing: -.35px; }
+  .brand-sub { color: var(--muted); font-size: 11px; margin-top: -1px; }
+  .top-spacer { flex: 1; }
+  .project-name { width: 190px; border: 1px solid transparent; border-radius: 7px; padding: 7px 9px; font-weight: 600; background: transparent; color: var(--text); }
+  .project-name:focus { outline: none; border-color: var(--line-strong); background: #fff; }
+  .save-status { color: var(--muted); font-size: 12px; min-width: 84px; text-align: right; }
+  .btn { border: 1px solid var(--line-strong); color: #344054; background: #fff; border-radius: 8px; padding: 8px 11px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-weight: 600; white-space: nowrap; transition: background .12s, border-color .12s, transform .12s; }
+  .btn:hover { background: #f8f9fb; border-color: #bbc4d0; }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .42; cursor: not-allowed; transform: none; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: #254fe4; }
+  .btn.soft { background: var(--accent-soft); border-color: #dce4ff; color: #2d50d5; }
+  .btn.danger { color: var(--red); }
+  .btn.icon { width: 34px; height: 34px; padding: 0; font-size: 16px; }
+  .btn.small { padding: 6px 9px; font-size: 12px; }
+  .workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 224px minmax(360px, 1fr) 270px; gap: 12px; padding: 12px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); min-height: 0; box-shadow: var(--shadow); }
+  .left-panel, .right-panel { display: flex; flex-direction: column; overflow: hidden; }
+  .panel-head { padding: 14px 14px 12px; border-bottom: 1px solid var(--line); }
+  .panel-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .panel-title { font-size: 12px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; color: #657184; }
+  .count { color: var(--muted); font-size: 11px; font-weight: 650; }
+  .import-actions { display: flex; gap: 7px; margin-top: 12px; }
+  .import-actions .btn { flex: 1; }
+  .search { width: 100%; margin-top: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; outline: none; background: var(--panel-soft); color: var(--text); }
+  .search:focus, .field input:focus, .field select:focus, .field textarea:focus { border-color: #aabaff; box-shadow: 0 0 0 3px rgba(49,94,251,.08); outline: none; }
+  .image-list { padding: 7px; overflow: auto; flex: 1; }
+  .image-row { width: 100%; border: 1px solid transparent; border-radius: 9px; padding: 7px; display: flex; gap: 9px; align-items: center; text-align: left; background: transparent; color: inherit; margin-bottom: 4px; }
+  .image-row:hover { background: #f8f9fb; }
+  .image-row.active { background: var(--accent-soft); border-color: #dbe3ff; }
+  .thumb { width: 52px; height: 48px; border-radius: 6px; flex: 0 0 52px; overflow: hidden; background: #eef0f4; display: grid; place-items: center; color: #a1a9b5; font-size: 10px; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .image-info { min-width: 0; flex: 1; }
+  .image-filename { display: block; font-size: 12px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .image-meta { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 10px; margin-top: 4px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #c7ced8; display: inline-block; }
+  .status-dot.annotated { background: var(--green); }
+  .status-dot.skipped { background: #d49a39; }
+  .queue-footer { padding: 10px 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; display: flex; justify-content: space-between; }
+  .center-panel { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+  .canvas-toolbar { min-height: 52px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 7px; padding: 8px 12px; flex-wrap: wrap; }
+  .toolbar-divider { width: 1px; height: 23px; background: var(--line); margin: 0 3px; }
+  .tool-toggle { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); background: #f8f9fb; border-radius: 9px; }
+  .tool-toggle button { border: 0; border-radius: 6px; padding: 5px 9px; background: transparent; color: #657184; font-weight: 650; font-size: 12px; }
+  .tool-toggle button.active { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(20,30,50,.12); }
+  .canvas-info { margin-left: auto; color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .canvas-wrap { flex: 1; min-height: 0; position: relative; overflow: hidden; display: grid; place-items: center; background-color: #f1f3f6; background-image: radial-gradient(#dfe3e9 0.7px, transparent .7px); background-size: 15px 15px; }
+  #stage { display: block; touch-action: none; max-width: 100%; max-height: 100%; cursor: crosshair; }
+  .empty-state { position: absolute; text-align: center; max-width: 340px; padding: 25px; color: var(--muted); pointer-events: none; }
+  .empty-icon { width: 50px; height: 50px; border-radius: 15px; background: #fff; display: grid; place-items: center; margin: 0 auto 13px; color: #7b8aa4; font-size: 23px; box-shadow: var(--shadow); }
+  .empty-state strong { color: #384456; display: block; margin-bottom: 6px; font-size: 15px; }
+  .empty-state span { font-size: 12px; line-height: 1.6; }
+  .canvas-bottom { min-height: 43px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; color: var(--muted); font-size: 11px; gap: 10px; }
+  .canvas-bottom .keys { display: flex; gap: 10px; flex-wrap: wrap; }
+  kbd { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; background: #f4f5f7; border: 1px solid #e2e5ea; border-radius: 4px; padding: 2px 4px; color: #647084; }
+  .right-panel .panel-head { display: flex; justify-content: space-between; align-items: center; }
+  .details-content { padding: 13px; overflow: auto; flex: 1; }
+  .selected-title { font-weight: 750; font-size: 13px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 11px; color: #718096; font-weight: 650; margin-bottom: 5px; }
+  .field input, .field select, .field textarea { width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 8px 9px; color: var(--text); background: #fff; outline: none; font-size: 12px; }
+  .field textarea { min-height: 65px; resize: vertical; }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .box-coords { border: 1px solid var(--line); border-radius: 8px; padding: 9px; background: #fafbfc; }
+  .box-coords-title { font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 7px; }
+  .coords-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .coords-grid div { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: #475467; }
+  .box-list { margin-top: 15px; }
+  .box-list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+  .box-item { padding: 8px; border: 1px solid var(--line); border-radius: 8px; display: flex; gap: 8px; align-items: center; margin-bottom: 6px; cursor: pointer; }
+  .box-item:hover { background: #f8f9fb; }
+  .box-item.active { border-color: #bdcaff; background: #f3f5ff; }
+  .box-index { width: 22px; height: 22px; border-radius: 6px; background: #edf1ff; color: var(--accent); display: grid; place-items: center; font-size: 10px; font-weight: 800; flex: 0 0 22px; }
+  .box-item-label { flex: 1; min-width: 0; font-size: 11px; font-weight: 650; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .box-item-type { color: var(--muted); font-size: 10px; }
+  .empty-detail { color: var(--muted); font-size: 12px; line-height: 1.6; background: #fafbfc; border: 1px dashed var(--line-strong); padding: 13px; border-radius: 9px; }
+  .detail-actions { display: flex; gap: 7px; margin-top: 12px; }
+  .detail-actions .btn { flex: 1; }
+  .right-footer { padding: 10px 13px; border-top: 1px solid var(--line); display: flex; gap: 7px; }
+  .right-footer .btn { flex: 1; }
+  .bottomnav { display: flex; align-items: center; gap: 8px; }
+  .progress-track { height: 5px; border-radius: 9px; background: #edf0f4; overflow: hidden; width: 78px; }
+  .progress-fill { height: 100%; background: var(--green); width: 0; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 15px); opacity: 0; pointer-events: none; padding: 10px 14px; background: #202938; color: #fff; border-radius: 9px; font-size: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.18); transition: .2s; z-index: 10; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .hidden { display: none !important; }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.28); z-index: 20; display: grid; place-items: center; padding: 20px; }
+  .modal { width: min(460px, 100%); border-radius: 14px; background: #fff; box-shadow: 0 20px 60px rgba(0,0,0,.2); padding: 20px; }
+  .modal h2 { font-size: 16px; margin: 0 0 8px; }
+  .modal p { color: var(--muted); font-size: 12px; line-height: 1.6; margin: 0 0 16px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 17px; }
+
+  .ai-modal { width: min(720px, 100%); max-height: min(88vh, 900px); overflow: auto; }
+  .ai-modal-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:8px; }
+  .ai-modal h2 { margin:3px 0 0; font-size:19px; letter-spacing:-.35px; }
+  .eyebrow { color:#718096; font-size:10px; font-weight:800; letter-spacing:.11em; }
+  .ai-pill { border:1px solid #dfe5ee; color:#637083; background:#f8fafc; border-radius:999px; padding:5px 9px; font-size:10px; font-weight:700; white-space:nowrap; }
+  .ai-pill.ready { color:#14734f; background:#eaf8f1; border-color:#c8ead9; }
+  .ai-pill.error { color:#a43e3e; background:#fff0f0; border-color:#f3d0d0; }
+  .ai-section { border:1px solid var(--line); background:#fafbfc; border-radius:10px; padding:12px; margin:14px 0; }
+  .ai-section-title { display:flex; justify-content:space-between; color:#344054; font-size:12px; font-weight:750; margin-bottom:8px; }
+  .ai-section-title span { font-size:10px; color:var(--muted); font-weight:600; }
+  .ai-reference-list { display:flex; gap:7px; flex-wrap:wrap; min-height:26px; }
+  .ai-ref-chip { display:inline-flex; align-items:center; gap:7px; padding:6px 9px; background:#edf7f2; color:#176b4c; border:1px solid #cdebdc; border-radius:8px; font-size:11px; font-weight:650; }
+  .ai-ref-chip button { border:0; background:transparent; color:inherit; cursor:pointer; padding:0 2px; font-size:15px; }
+  .muted-note { color:var(--muted); font-size:11px; line-height:1.55; }
+  .ai-instructions-field { margin-top:12px; }
+  .ai-instructions-field textarea { min-height:100px; line-height:1.55; }
+  .ai-options-grid { display:grid; grid-template-columns:1fr 1fr; gap:13px; margin-top:10px; }
+  .ai-target-info { border:1px solid var(--line); border-radius:7px; padding:8px 9px; min-height:35px; font-size:12px; color:#344054; background:#fafbfc; }
+  .ai-checkbox { display:flex !important; gap:7px; align-items:center; margin-top:8px; font-weight:500 !important; color:#475467 !important; line-height:1.4; }
+  .ai-checkbox input { width:auto !important; margin:0; }
+  .ai-note { border-left:3px solid #b9c8fb; background:#f5f7ff; color:#59677e; padding:10px 12px; border-radius:0 8px 8px 0; font-size:11px; line-height:1.55; margin-top:4px; }
+  .ai-progress { margin-top:14px; border:1px solid var(--line); border-radius:9px; padding:11px; }
+  .ai-progress-row { display:flex; justify-content:space-between; font-size:11px; margin-bottom:8px; }
+  .ai-progress-track { width:100%; height:7px; }
+  .ai-progress-log { max-height:115px; overflow:auto; margin-top:8px; font-size:10px; color:#697586; line-height:1.6; }
+  .ai-log-error { color:#b54747; }
+  .ai-log-ok { color:#16734f; }
+  .ai-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin:18px 0; }
+  .ai-stat { border:1px solid var(--line); background:#fafbfc; padding:11px; border-radius:9px; min-width:0; }
+  .ai-stat span { color:var(--muted); font-size:10px; display:block; margin-bottom:5px; }
+  .ai-stat strong { font-size:16px; font-weight:760; overflow-wrap:anywhere; }
+  .usage-table-wrap { overflow:auto; border:1px solid var(--line); border-radius:9px; }
+  .usage-table { width:100%; border-collapse:collapse; font-size:11px; text-align:left; }
+  .usage-table th { color:#667085; background:#fafbfc; font-size:10px; }
+  .usage-table th,.usage-table td { padding:9px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  .usage-table td:first-child { max-width:180px; overflow:hidden; text-overflow:ellipsis; }
+  .usage-table .usage-error details { white-space:normal; min-width:150px; }
+  .usage-table .usage-error summary { color:#b42318; cursor:pointer; }
+  .usage-table .usage-error pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:240px; max-width:640px; overflow:auto; }
+  .image-row { position:relative; }
+  .ai-reference-tag { color:#176b4c; background:#eaf8f1; border:1px solid #cdebdc; border-radius:4px; padding:1px 4px; font-size:9px; font-weight:750; }
+  .ai-draft-tag { color:#875a10; background:#fff6df; border:1px solid #f2e2b8; border-radius:4px; padding:1px 4px; font-size:9px; font-weight:750; }
+  .canvas-wrap.panning #stage { cursor:grabbing !important; }
+  #stage { cursor:crosshair; }
+  .btn.ai-active { color:#176b4c; background:#eaf8f1; border-color:#bfe5d1; }
+  @media (max-width:760px) { .ai-options-grid { grid-template-columns:1fr; gap:4px; } .ai-stat-grid { grid-template-columns:repeat(2,1fr); } .ai-modal-head { flex-direction:column; } }
+
+  @media (max-width: 1050px) {
+    .workspace { grid-template-columns: 190px minmax(300px,1fr) 235px; gap: 8px; padding: 8px; }
+    .topbar { padding: 0 12px; gap: 9px; }
+    .brand { min-width: 165px; }
+    .project-name { width: 145px; }
+    .canvas-info { display: none; }
+  }
+  @media (max-width: 760px) {
+    .app { min-height: 100vh; height: auto; }
+    .topbar { min-height: 56px; height: auto; flex-wrap: wrap; padding: 8px 10px; }
+    .brand { min-width: auto; }
+    .project-name { width: 115px; }
+    .save-status { display: none; }
+    .workspace { display: flex; flex-direction: column; min-height: calc(100vh - 65px); }
+    .left-panel { order: 2; max-height: 190px; }
+    .center-panel { order: 1; min-height: 55vh; }
+    .right-panel { order: 3; min-height: 250px; }
+    .image-list { display: flex; overflow-x: auto; overflow-y: hidden; gap: 5px; }
+    .image-row { min-width: 180px; align-self: flex-start; }
+    .queue-footer { display: none; }
+    .right-footer { position: sticky; bottom: 0; background: #fff; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div><div class="brand-name">ShelfScope</div><div class="brand-sub">Visual dataset studio</div></div>
+    </div>
+    <input id="projectName" class="project-name" value="Untitled dataset" aria-label="Project name" />
+    <div class="top-spacer"></div>
+    <div class="save-status" id="saveStatus">Saved locally</div>
+    <button class="btn" id="undoBtn" title="Undo (⌘Z)" disabled>↶ Undo</button>
+    <button class="btn" id="redoBtn" title="Redo (⇧⌘Z)" disabled>↷ Redo</button>
+    <button class="btn soft" id="aiAnnotateBtn">✦ Annotate with AI</button>
+    <button class="btn" id="aiUsageBtn">AI usage</button>
+    <button class="btn" id="importJsonBtn">Import JSON</button>
+    <button class="btn primary" id="exportBtn">Export dataset ↓</button>
+  </header>
+
+  <main class="workspace">
+    <aside class="panel left-panel">
+      <div class="panel-head">
+        <div class="panel-title-row"><span class="panel-title">Images</span><span class="count" id="imageCount">0 files</span></div>
+        <div class="import-actions">
+          <button class="btn small" id="addFilesBtn">＋ Files</button>
+          <button class="btn small" id="addFolderBtn">▣ Folder</button>
+        </div>
+        <input class="search" id="imageSearch" placeholder="Filter images…" autocomplete="off" />
+      </div>
+      <div class="image-list" id="imageList">
+        <div class="empty-detail" style="margin:8px">No images loaded yet. Add images or select a folder to begin.</div>
+      </div>
+      <div class="queue-footer"><span id="queueSummary">0 annotated · 0 skipped</span><span id="queuePercent">0%</span></div>
+    </aside>
+
+    <section class="panel center-panel">
+      <div class="canvas-toolbar">
+        <div class="tool-toggle" aria-label="Annotation tool">
+          <button id="selectTool" type="button">↖ Select</button>
+          <button id="drawTool" type="button" class="active">▱ Draw box</button>
+          <button id="twoTapTool" type="button">2-corner</button>
+        </div>
+        <div class="toolbar-divider"></div>
+        <button class="btn icon" id="zoomOutBtn" title="Zoom out">−</button>
+        <button class="btn small" id="fitBtn" title="Fit image">Fit</button>
+        <button class="btn icon" id="zoomInBtn" title="Zoom in">＋</button>
+        <div class="toolbar-divider"></div>
+        <button class="btn small" id="addBoxBtn">＋ Draw new box</button>
+        <button class="btn small" id="referenceBtn" title="Use this manually annotated image as an AI example">☆ Use as AI example</button>
+        <button class="btn icon" id="helpBtn" title="Quick controls (?)">?</button>
+        <div class="canvas-info" id="canvasInfo">Drag to draw · Scroll to pan · ⌘/Ctrl + scroll to zoom</div>
+      </div>
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="stage"></canvas>
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">▧</div>
+          <strong>Start with your rack images</strong>
+          <span>Choose individual images or load a folder. Your annotations are saved locally in this browser while you work.</span>
+        </div>
+      </div>
+      <div class="canvas-bottom">
+        <div class="keys"><span><kbd id="modKey">⌘</kbd><kbd>Z</kbd> Undo</span><span><kbd id="redoModKey">⌘</kbd><kbd>⇧</kbd><kbd>Z</kbd> Redo</span><span><kbd>Delete</kbd> Remove box</span><span><kbd>←</kbd> / <kbd>→</kbd> Navigate</span><span><kbd>Space</kbd> + drag Pan</span></div>
+        <div class="bottomnav">
+          <button class="btn small" id="prevBtn" disabled>← Prev</button>
+          <span id="imageDimensions">No image selected</span>
+          <button class="btn small" id="nextBtn" disabled>Next →</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel right-panel">
+      <div class="panel-head"><span class="panel-title">Annotation details</span><span class="count" id="annotationCount">0 boxes</span></div>
+      <div class="details-content" id="detailsContent">
+        <div class="empty-detail">Select a bounding box to edit its label, section and category. Draw a new box directly on the image to add an annotation.</div>
+      </div>
+      <div class="right-footer">
+        <button class="btn small" id="skipBtn">Skip image</button>
+        <button class="btn primary small" id="doneBtn">Mark done →</button>
+      </div>
+    </aside>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal-backdrop hidden" id="helpModal">
+  <div class="modal">
+    <h2>Quick controls</h2>
+    <p><b>Draw box:</b> click and drag. <b>2-corner:</b> click once for the first corner, then click the opposite corner. <b>Double-click:</b> add a quick 12%-size editable box. In Select mode, drag inside a box to move it or drag a larger corner/edge handle to resize.</p>
+    <p><b>Zoom and pan:</b> scroll with the trackpad to move around the zoomed image. Hold ⌘ on Mac or Ctrl on Windows/Linux while scrolling to zoom at the pointer. You can also hold Space and drag to pan.</p>
+    <p><b>Keyboard:</b> ⌘Z / Ctrl+Z undo, ⇧⌘Z / Ctrl+Y redo, Delete removes selected box, ← / → moves between images, D switches to draw, V switches to select.</p>
+    <div class="modal-actions"><button class="btn primary" id="closeHelpBtn">Got it</button></div>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="aiModal">
+  <div class="modal ai-modal" role="dialog" aria-modal="true" aria-labelledby="aiModalTitle">
+    <div class="ai-modal-head">
+      <div><div class="eyebrow">GEMINI ASSISTED ANNOTATION</div><h2 id="aiModalTitle">Annotate the remaining images</h2></div>
+      <span class="ai-pill" id="aiServerStatus">Checking local AI service…</span>
+    </div>
+    <p>Manually annotate one or two example images, mark them as AI examples, then let Gemini apply the same annotation rules to the remaining images. Review every AI-generated box before marking an image done.</p>
+    <div class="ai-section">
+      <div class="ai-section-title">Reference examples <span id="aiRefCount">0 / 2 selected</span></div>
+      <div id="aiReferenceSummary" class="ai-reference-list"><span class="muted-note">No reference examples selected. Use “Use as AI example” on an annotated image.</span></div>
+    </div>
+    <div class="field ai-instructions-field">
+      <label for="aiInstructions">Instructions for Gemini</label>
+      <textarea id="aiInstructions" rows="4">Follow the annotation style, object granularity, labels, categories and bounding-box rules demonstrated in the reference examples. Annotate every matching product block visible in the target image. Do not invent products or labels. Use tight boxes around each complete product block, not individual packages unless the examples do so.</textarea>
+    </div>
+    <div class="ai-options-grid">
+      <div class="field">
+        <label for="aiResolution">Image detail / token usage</label>
+        <select id="aiResolution">
+          <option value="economy">Economy · 1024 px max edge</option>
+          <option value="balanced" selected>Balanced · 1600 px max edge</option>
+          <option value="high">High detail · 2560 px max edge</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Target images</label>
+        <div class="ai-target-info" id="aiTargetSummary">0 images ready</div>
+        <label class="ai-checkbox"><input type="checkbox" id="aiReplaceExisting"> Replace annotations on images that already have boxes</label>
+      </div>
+    </div>
+    <div class="ai-note"><b>Privacy and cost:</b> selected reference images and target images are sent to Gemini through your local Node.js server. Your API key stays in the server-side <code>.env</code> file. Token usage and estimated API cost will be recorded for each image.</div>
+    <div class="ai-progress hidden" id="aiProgress">
+      <div class="ai-progress-row"><strong id="aiProgressLabel">Preparing…</strong><span id="aiProgressCount">0 / 0</span></div>
+      <div class="progress-track ai-progress-track"><div class="progress-fill" id="aiProgressFill"></div></div>
+      <div id="aiProgressLog" class="ai-progress-log"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="closeAiModalBtn">Close</button>
+      <button class="btn primary" id="startAiBtn">✦ Start AI annotation</button>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="aiUsageModal">
+  <div class="modal ai-modal usage-modal" role="dialog" aria-modal="true" aria-labelledby="aiUsageTitle">
+    <div class="ai-modal-head"><div><div class="eyebrow">REQUEST TELEMETRY</div><h2 id="aiUsageTitle">AI usage and estimated cost</h2></div><span class="ai-pill">Local history</span></div>
+    <div class="ai-stat-grid">
+      <div class="ai-stat"><span>Requests</span><strong id="usageRequests">0</strong></div>
+      <div class="ai-stat"><span>Total tokens</span><strong id="usageTokens">0</strong></div>
+      <div class="ai-stat"><span>Estimated cost</span><strong id="usageCost">$0.000000</strong></div>
+      <div class="ai-stat"><span>Processing time</span><strong id="usageTime">0 s</strong></div>
+    </div>
+    <div class="usage-table-wrap"><table class="usage-table"><thead><tr><th>Image</th><th>Input</th><th>Cached</th><th>Output*</th><th>Thinking</th><th>Total</th><th>Time</th><th>Est. cost</th><th>Failure</th></tr></thead><tbody id="usageRows"><tr><td colspan="9" class="muted-note">No AI requests yet.</td></tr></tbody></table></div>
+    <p class="muted-note">* Output includes thinking tokens when reported. Costs are estimates from the configured model rates, not an invoice. Free-tier usage may be free within Google's limits. Prices can change.</p>
+    <div class="modal-actions"><button class="btn" id="closeUsageModalBtn">Close</button><button class="btn" id="exportUsageBtn">Export usage JSON</button></div>
+  </div>
+</div>
+<input id="fileInput" class="hidden" type="file" accept="image/*" multiple />
+<input id="folderInput" class="hidden" type="file" accept="image/*" webkitdirectory directory multiple />
+<input id="jsonInput" class="hidden" type="file" accept="application/json,.json" />
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const canvas = $('stage');
+  const ctx = canvas.getContext('2d');
+  const wrap = $('canvasWrap');
+  const state = {
+    projectName: 'Untitled dataset', images: [], activeIndex: -1, selectedId: null,
+    tool: 'draw', zoom: 1, fit: null, view: null, bitmap: null, bitmapUrl: null,
+    drawing: null, gesture: null, twoTapStart: null,
+    history: [], future: [], saveTimer: null, db: null, dirty: false, aiUsage: [], aiConfig: null, aiRunning: false, spaceDown: false
+  };
+  const HANDLE = 8;
+  const COLORS = { product: '#315efb', shelf: '#0d9b75', fixture: '#d58a22', other: '#8b5cf6' };
+
+  function uid(prefix='id') { return prefix + '_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4); }
+  function clone(v) { return JSON.parse(JSON.stringify(v)); }
+  function activeImage() { return state.images[state.activeIndex] || null; }
+  function currentAnnotations() { const im=activeImage(); return im ? im.annotations : []; }
+  function selectedAnnotation() { return currentAnnotations().find(a => a.id === state.selectedId) || null; }
+  function fileSize(n) { if (n < 1024) return n+' B'; if (n < 1048576) return (n/1024).toFixed(0)+' KB'; return (n/1048576).toFixed(1)+' MB'; }
+  function toast(message) { const el=$('toast'); el.textContent=message; el.classList.add('show'); clearTimeout(toast.timer); toast.timer=setTimeout(()=>el.classList.remove('show'),2300); }
+
+  async function openDB() {
+    if (!('indexedDB' in window)) return null;
+    return new Promise((resolve) => {
+      const req = indexedDB.open('rackmark-local', 1);
+      req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains('workspace')) req.result.createObjectStore('workspace'); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+  }
+  function dbGet(key) {
+    return new Promise(resolve => { if(!state.db) return resolve(null); try { const r=state.db.transaction('workspace','readonly').objectStore('workspace').get(key); r.onsuccess=()=>resolve(r.result||null); r.onerror=()=>resolve(null); } catch { resolve(null); } });
+  }
+  function dbPut(key,value) {
+    return new Promise(resolve => { if(!state.db) return resolve(false); try { const tx=state.db.transaction('workspace','readwrite'); tx.objectStore('workspace').put(value,key); tx.oncomplete=()=>resolve(true); tx.onerror=()=>resolve(false); } catch { resolve(false); } });
+  }
+  function serializableProject() {
+    return {
+      schema: 'shelfscope.annotation.v2', project_name: state.projectName,
+      coordinate_format: 'normalized_0_1000', box_order: '[ymin, xmin, ymax, xmax]',
+      created_at: state.createdAt || new Date().toISOString(), updated_at: new Date().toISOString(),
+      images: state.images.map(im => ({
+        image_id: im.id, file_name: im.name, relative_path: im.relativePath || im.name, is_ai_reference: !!im.aiReference, ai_metrics: im.aiMetrics || null,
+        width: im.width || null, height: im.height || null, file_size: im.blob?.size || im.fileSize || 0,
+        status: im.status, annotations: (im.annotations || []).map(a => {
+          const b=a.bbox || {x:0,y:0,w:0,h:0};
+          const x=Math.max(0,Math.min(1,b.x)), y=Math.max(0,Math.min(1,b.y));
+          const w=Math.max(0,Math.min(1-x,b.w)), h=Math.max(0,Math.min(1-y,b.h));
+          return { id:a.id, type:a.type||'product', label:a.label||'', section:a.section||'', category:a.category||'', notes:a.notes||'', source:a.source||'manual',
+            bbox_xywh_normalized:{x,y,width:w,height:h},
+            box_2d:[Math.round(y*1000),Math.round(x*1000),Math.round((y+h)*1000),Math.round((x+w)*1000)] };
+        })
+      })),
+      ai_usage: state.aiUsage || []
+    };
+  }
+  function saveSoon() {
+    state.dirty=true; $('saveStatus').textContent='Saving…'; clearTimeout(state.saveTimer);
+    state.saveTimer=setTimeout(async()=>{
+      const payload={schema:'shelfscope.local.v2', projectName:state.projectName, createdAt:state.createdAt || new Date().toISOString(), images:state.images, aiUsage:state.aiUsage};
+      const ok=await dbPut('project',payload);
+      state.dirty=false; $('saveStatus').textContent=ok?'Saved locally':'Session only';
+    },350);
+  }
+  async function restore() {
+    const saved=await dbGet('project');
+    if (!saved || !Array.isArray(saved.images)) return;
+    state.projectName=saved.projectName || 'Untitled dataset'; state.createdAt=saved.createdAt;
+    state.images=saved.images; state.aiUsage=saved.aiUsage || []; state.images.forEach(im=>{if(im.blob)im.previewUrl=URL.createObjectURL(im.blob);});
+    $('projectName').value=state.projectName;
+    if(state.images.length) { state.activeIndex=0; await loadActiveImage(); }
+    renderAll(); $('saveStatus').textContent='Restored locally';
+  }
+
+  function snapshot() { return {annotations:clone(currentAnnotations()), status:activeImage()?.status || 'pending'}; }
+  function pushHistory() { if(!activeImage()) return; state.history.push(snapshot()); if(state.history.length>70) state.history.shift(); state.future=[]; updateUndoRedo(); }
+  function applySnapshot(s) { const im=activeImage(); if(!im) return; im.annotations=clone(s.annotations); im.status=s.status; state.selectedId=null; renderAll(); saveSoon(); }
+  function undo() { if(!state.history.length || !activeImage()) return; state.future.push(snapshot()); applySnapshot(state.history.pop()); updateUndoRedo(); }
+  function redo() { if(!state.future.length || !activeImage()) return; state.history.push(snapshot()); applySnapshot(state.future.pop()); updateUndoRedo(); }
+  function updateUndoRedo() { $('undoBtn').disabled=!state.history.length; $('redoBtn').disabled=!state.future.length; }
+
+  function imageFromBlob(blob) {
+    return new Promise((resolve,reject)=>{
+      if (window.createImageBitmap) { createImageBitmap(blob).then(resolve).catch(()=>fallback()); }
+      else fallback();
+      function fallback() { const url=URL.createObjectURL(blob); const img=new Image(); img.onload=()=>{ img._objectUrl=url; resolve(img); }; img.onerror=reject; img.src=url; }
+    });
+  }
+  async function loadActiveImage() {
+    const im=activeImage(); state.bitmap=null;
+    if(state.bitmapUrl) { URL.revokeObjectURL(state.bitmapUrl); state.bitmapUrl=null; }
+    if(!im) { draw(); return; }
+    try {
+      if(im.blob) state.bitmap=await imageFromBlob(im.blob);
+      else if(im.dataUrl) { const img=new Image(); await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=im.dataUrl;}); state.bitmap=img; }
+      else state.bitmap=null;
+      if(state.bitmap) { im.width=state.bitmap.width || state.bitmap.naturalWidth; im.height=state.bitmap.height || state.bitmap.naturalHeight; }
+    } catch(e) { console.error(e); toast('Could not load '+im.name); }
+    fitImage(); renderAll(); draw(); saveSoon();
+  }
+  function fitImage() {
+    if(!state.bitmap) { state.view=null; return; }
+    const rect=wrap.getBoundingClientRect(); const pad=34;
+    const scale=Math.min((rect.width-pad*2)/state.bitmap.width,(rect.height-pad*2)/state.bitmap.height,1.5);
+    const w=state.bitmap.width*scale, h=state.bitmap.height*scale;
+    state.fit={scale,w,h,x:(rect.width-w)/2,y:(rect.height-h)/2}; state.zoom=1; state.view={...state.fit};
+    resizeCanvas();
+  }
+  function resizeCanvas() {
+    const r=wrap.getBoundingClientRect(), dpr=Math.max(1,window.devicePixelRatio||1);
+    canvas.width=Math.max(1,Math.round(r.width*dpr)); canvas.height=Math.max(1,Math.round(r.height*dpr));
+    canvas.style.width=r.width+'px'; canvas.style.height=r.height+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0); draw();
+  }
+  function draw() {
+    const r=wrap.getBoundingClientRect(); if(!r.width || !r.height) return;
+    const dpr=Math.max(1,window.devicePixelRatio||1); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,r.width,r.height);
+    const im=activeImage();
+    if(!im || !state.bitmap || !state.view) { $('emptyState').classList.remove('hidden'); return; }
+    $('emptyState').classList.add('hidden');
+    const v=state.view; ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+    ctx.drawImage(state.bitmap,v.x,v.y,v.w,v.h);
+    const anns=im.annotations||[];
+    anns.forEach((a,i)=>drawAnnotation(a,i));
+    if(state.drawing) {
+      const b=state.drawing.bbox; const rect=toScreen(b);
+      ctx.save(); ctx.strokeStyle=COLORS[state.drawing.type]||COLORS.product; ctx.lineWidth=2; ctx.setLineDash([6,4]); ctx.strokeRect(rect.x,rect.y,rect.w,rect.h); ctx.fillStyle='rgba(49,94,251,.08)'; ctx.fillRect(rect.x,rect.y,rect.w,rect.h); ctx.restore();
+    }
+    if(state.twoTapStart) {
+      const p=toScreenPoint(state.twoTapStart.x,state.twoTapStart.y); ctx.save(); ctx.beginPath(); ctx.arc(p.x,p.y,5,0,Math.PI*2); ctx.fillStyle=varColor('--accent'); ctx.fill(); ctx.restore();
+    }
+  }
+  function varColor(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+  function toScreen(b) { const v=state.view; return {x:v.x+b.x*v.w, y:v.y+b.y*v.h, w:b.w*v.w, h:b.h*v.h}; }
+  function toScreenPoint(x,y) { const v=state.view, im=activeImage(); return {x:v.x+x/im.width*v.w,y:v.y+y/im.height*v.h}; }
+  function toImagePoint(clientX,clientY) { const cr=canvas.getBoundingClientRect(), x=clientX-cr.left, y=clientY-cr.top, v=state.view, im=activeImage(); return {x:clamp((x-v.x)/v.w*im.width,0,im.width),y:clamp((y-v.y)/v.h*im.height,0,im.height)}; }
+  function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+  function drawAnnotation(a,index) {
+    const r=toScreen(a.bbox), selected=a.id===state.selectedId, color=COLORS[a.type]||COLORS.product;
+    ctx.save(); ctx.lineWidth=selected?2.5:1.8; ctx.strokeStyle=color; ctx.fillStyle=selected?'rgba(49,94,251,.12)':'rgba(49,94,251,.035)'; ctx.fillRect(r.x,r.y,r.w,r.h); ctx.strokeRect(r.x,r.y,r.w,r.h);
+    const label=(a.label||`Box ${index+1}`).slice(0,32), text=`${index+1} · ${label}`;
+    ctx.font='600 11px system-ui, sans-serif'; const tw=ctx.measureText(text).width; const tagW=tw+12, tagH=20; const ty=Math.max(0,r.y-tagH);
+    ctx.fillStyle=color; ctx.fillRect(r.x,ty,tagW,tagH); ctx.fillStyle='#fff'; ctx.fillText(text,r.x+6,ty+14);
+    if(selected) {
+      const pts=handles(r); ctx.fillStyle='#fff'; ctx.strokeStyle=color; ctx.lineWidth=1.5;
+      pts.forEach(p=>{ctx.beginPath();ctx.rect(p.x-5,p.y-5,10,10);ctx.fill();ctx.stroke();});
+    }
+    ctx.restore();
+  }
+  function handles(r) { const mx=r.x+r.w/2,my=r.y+r.h/2; return [{x:r.x,y:r.y,key:'nw'},{x:mx,y:r.y,key:'n'},{x:r.x+r.w,y:r.y,key:'ne'},{x:r.x+r.w,y:my,key:'e'},{x:r.x+r.w,y:r.y+r.h,key:'se'},{x:mx,y:r.y+r.h,key:'s'},{x:r.x,y:r.y+r.h,key:'sw'},{x:r.x,y:my,key:'w'}]; }
+  function hitTest(point) {
+    const anns=currentAnnotations();
+    for(let i=anns.length-1;i>=0;i--) {
+      const a=anns[i], r=toScreen(a.bbox);
+      if(a.id===state.selectedId) { for(const h of handles(r)) if(Math.abs(point.x-h.x)<=15&&Math.abs(point.y-h.y)<=15) return {a,handle:h.key}; }
+      if(point.x>=r.x&&point.x<=r.x+r.w&&point.y>=r.y&&point.y<=r.y+r.h) return {a,inside:true};
+    }
+    return null;
+  }
+  function setTool(tool) { state.tool=tool; state.twoTapStart=null; $('selectTool').classList.toggle('active',tool==='select'); $('drawTool').classList.toggle('active',tool==='draw'); $('twoTapTool').classList.toggle('active',tool==='twoTap'); canvas.style.cursor=tool==='select'?'default':'crosshair'; $('canvasInfo').textContent=tool==='twoTap'?'Click first corner, then opposite corner':'Drag to draw · Double-click for quick box'; draw(); }
+  function addAnnotation(bbox) {
+    const im=activeImage(); if(!im) return;
+    const a={id:uid('box'),type:'product',label:'Product block',section:'',category:'',notes:'',bbox:normalizeBox(bbox,im.width,im.height)};
+    im.annotations.push(a); im.status='annotated'; state.selectedId=a.id; renderAll(); saveSoon(); draw();
+  }
+  function normalizeBox(b,w,h) { let x=clamp(Math.min(b.x,b.x+b.w),0,w), y=clamp(Math.min(b.y,b.y+b.h),0,h); let x2=clamp(Math.max(b.x,b.x+b.w),0,w), y2=clamp(Math.max(b.y,b.y+b.h),0,h); return {x:x/w,y:y/h,w:Math.max(0,x2-x)/w,h:Math.max(0,y2-y)/h}; }
+  function denormalizeBox(b,im) { return {x:b.x*im.width,y:b.y*im.height,w:b.w*im.width,h:b.h*im.height}; }
+  function beginGesture(e) {
+    if(!activeImage()||!state.bitmap||!state.view) return;
+    const p=toImagePoint(e.clientX,e.clientY), s={x:e.clientX-canvas.getBoundingClientRect().left,y:e.clientY-canvas.getBoundingClientRect().top};
+    if(state.spaceDown || e.button===1) { e.preventDefault(); state.gesture={kind:'pan',startClient:{x:e.clientX,y:e.clientY},origin:{x:state.view.x,y:state.view.y}}; canvas.setPointerCapture?.(e.pointerId); wrap.classList.add('panning'); return; }
+    if(state.tool==='twoTap') { e.preventDefault(); if(!state.twoTapStart) { state.twoTapStart=p; toast('First corner set. Tap the opposite corner.'); draw(); } else { const p1=state.twoTapStart; state.twoTapStart=null; const b={x:p1.x,y:p1.y,w:p.x-p1.x,h:p.y-p1.y}; if(Math.abs(b.w)>3&&Math.abs(b.h)>3) {pushHistory();addAnnotation(b);} else toast('Box is too small. Try again.'); } return; }
+    if(state.tool==='draw') { e.preventDefault(); pushHistory(); state.drawing={start:p,current:p,bbox:{x:p.x,y:p.y,w:0,h:0},type:'product'}; canvas.setPointerCapture?.(e.pointerId); draw(); return; }
+    const hit=hitTest(s);
+    if(hit) {
+      state.selectedId=hit.a.id; pushHistory();
+      state.gesture={kind:hit.handle?'resize':'move',handle:hit.handle||null,start:p,original:clone(hit.a.bbox)};
+      canvas.setPointerCapture?.(e.pointerId);
+    } else { state.selectedId=null; state.gesture=null; }
+    renderDetails(); draw();
+  }
+  function moveGesture(e) {
+    if(state.drawing) { const p=toImagePoint(e.clientX,e.clientY), a=state.drawing.start; state.drawing.current=p; state.drawing.bbox={x:a.x,y:a.y,w:p.x-a.x,h:p.y-a.y}; draw(); return; }
+    if(state.gesture?.kind==='pan') { state.view.x=state.gesture.origin.x+(e.clientX-state.gesture.startClient.x); state.view.y=state.gesture.origin.y+(e.clientY-state.gesture.startClient.y); clampView(); draw(); return; }
+    if(!state.gesture) return;
+    const im=activeImage(), p=toImagePoint(e.clientX,e.clientY), g=state.gesture, a=selectedAnnotation(); if(!a) return;
+    const dx=p.x-g.start.x,dy=p.y-g.start.y, orig=denormalizeBox(g.original,im); let b={...orig};
+    if(g.kind==='move') { b.x=clamp(orig.x+dx,0,im.width-orig.w); b.y=clamp(orig.y+dy,0,im.height-orig.h); }
+    else {
+      const h=g.handle;
+      if(h.includes('w')) { const right=orig.x+orig.w; b.x=clamp(orig.x+dx,0,right-4); b.w=right-b.x; }
+      if(h.includes('e')) b.w=clamp(orig.w+dx,4,im.width-orig.x);
+      if(h.includes('n')) { const bottom=orig.y+orig.h; b.y=clamp(orig.y+dy,0,bottom-4); b.h=bottom-b.y; }
+      if(h.includes('s')) b.h=clamp(orig.h+dy,4,im.height-orig.y);
+    }
+    a.bbox=normalizeBox(b,im.width,im.height); draw(); renderDetails();
+  }
+  function endGesture() {
+    if(state.gesture?.kind==='pan') { state.gesture=null; wrap.classList.remove('panning'); return; }
+    if(state.drawing) { const b=state.drawing.bbox; state.drawing=null; if(Math.abs(b.w)>=5&&Math.abs(b.h)>=5) addAnnotation(b); else { if(state.history.length) state.history.pop(); toast('Box too small — drag a little further.'); updateUndoRedo(); draw(); } return; }
+    if(state.gesture) { state.gesture=null; if(activeImage()) activeImage().status='annotated'; saveSoon(); renderAll(); }
+  }
+  function quickBox(e) { if(state.tool==='twoTap'||!activeImage()) return; const p=toImagePoint(e.clientX,e.clientY), im=activeImage(), w=im.width*.12,h=im.height*.12; pushHistory(); addAnnotation({x:clamp(p.x-w/2,0,im.width-w),y:clamp(p.y-h/2,0,im.height-h),w,h}); toast('Quick box added. Resize it with the handles.'); }
+  canvas.addEventListener('pointerdown',beginGesture);
+  canvas.addEventListener('pointermove',moveGesture);
+  canvas.addEventListener('pointerup',endGesture);
+  canvas.addEventListener('pointercancel',endGesture);
+  canvas.addEventListener('dblclick',e=>{e.preventDefault();quickBox(e);});
+  canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+  function renderList() {
+    const list=$('imageList'), q=$('imageSearch').value.toLowerCase(); list.innerHTML='';
+    const visible=state.images.map((im,i)=>({im,i})).filter(o=>o.im.name.toLowerCase().includes(q)||(o.im.relativePath||'').toLowerCase().includes(q));
+    if(!visible.length) { const d=document.createElement('div'); d.className='empty-detail'; d.style.margin='8px'; d.textContent=state.images.length?'No matching images.':'No images loaded yet. Add images or select a folder to begin.'; list.append(d); }
+    visible.forEach(({im,i})=>{
+      const b=document.createElement('button'); b.className='image-row'+(i===state.activeIndex?' active':''); b.type='button';
+      const thumb=document.createElement('div'); thumb.className='thumb';
+      const thumbSrc=im.previewUrl || (im.blob?URL.createObjectURL(im.blob):null);
+      if(thumbSrc) { const img=document.createElement('img'); img.alt=''; img.src=thumbSrc; img.onload=()=>{ if(!im.previewUrl && thumbSrc.startsWith('blob:')) URL.revokeObjectURL(thumbSrc); }; thumb.append(img); }
+      else thumb.textContent='RELINK';
+      const info=document.createElement('div'); info.className='image-info';
+      const fn=document.createElement('span'); fn.className='image-filename'; fn.textContent=im.name; fn.title=im.relativePath||im.name;
+      const meta=document.createElement('div'); meta.className='image-meta'; const dot=document.createElement('i'); dot.className='status-dot '+(im.status||''); meta.append(dot,document.createTextNode(`${im.annotations?.length||0} boxes · ${im.status==='skipped'?'Skipped':im.status==='annotated'?'Done':im.status==='ai_draft'?'AI draft':'Pending'}`)); if(im.aiReference){const ref=document.createElement('span');ref.className='ai-reference-tag';ref.textContent='AI EXAMPLE';meta.append(ref);} else if(im.status==='ai_draft'){const ai=document.createElement('span');ai.className='ai-draft-tag';ai.textContent='REVIEW';meta.append(ai);} info.append(fn,meta);
+      b.append(thumb,info); b.onclick=()=>selectImage(i); list.append(b);
+    });
+  }
+  function renderDetails() {
+    const host=$('detailsContent'), a=selectedAnnotation(), im=activeImage(); host.innerHTML='';
+    if(!im) { host.innerHTML='<div class="empty-detail">Load images to start annotating.</div>'; return; }
+    if(!a) { host.innerHTML='<div class="empty-detail">Select a bounding box to edit its label, section and category. Draw a new box directly on the image to add an annotation.</div>'; renderAiMetrics(host,im); renderBoxList(host); return; }
+    const title=document.createElement('div'); title.className='selected-title'; title.innerHTML=`<span>Selected box</span><span style="font-size:10px;color:#8993a2">${im.annotations.findIndex(x=>x.id===a.id)+1} / ${im.annotations.length}</span>`; host.append(title);
+    const type=field('Type','select',[['product','Product block'],['shelf','Shelf / section'],['fixture','Fixture'],['other','Other']],a.type,(v)=>updateAnn('type',v)); host.append(type);
+    host.append(field('Label','input',null,a.label,v=>updateAnn('label',v),'e.g. Cola cans'));
+    host.append(field('Section','input',null,a.section,v=>updateAnn('section',v),'e.g. S1 / Top shelf'));
+    host.append(field('Category','input',null,a.category,v=>updateAnn('category',v),'e.g. beverage'));
+    host.append(field('Notes','textarea',null,a.notes,v=>updateAnn('notes',v),'Optional annotation notes'));
+    const b=denormalizeBox(a.bbox,im); const coords=document.createElement('div'); coords.className='box-coords';
+    coords.innerHTML=`<div class="box-coords-title">Bounding box · pixels</div><div class="coords-grid"><div>X: ${Math.round(b.x)}</div><div>Y: ${Math.round(b.y)}</div><div>W: ${Math.round(b.w)}</div><div>H: ${Math.round(b.h)}</div></div><div style="font-size:10px;color:#929bab;margin-top:8px">Export uses Gemini format: [ymin, xmin, ymax, xmax] · 0–1000</div>`; host.append(coords);
+    renderAiMetrics(host,im);
+    const actions=document.createElement('div'); actions.className='detail-actions'; const del=document.createElement('button'); del.className='btn small danger'; del.textContent='Delete box'; del.onclick=deleteSelected; const duplicate=document.createElement('button'); duplicate.className='btn small'; duplicate.textContent='Duplicate'; duplicate.onclick=duplicateSelected; actions.append(del,duplicate); host.append(actions);
+    renderBoxList(host);
+  }
+  function field(label,type,options,value,onChange,placeholder='') {
+    const wrap=document.createElement('div'); wrap.className='field'; const l=document.createElement('label'); l.textContent=label; wrap.append(l); let el;
+    if(type==='select') { el=document.createElement('select'); options.forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;el.append(o);}); el.value=value||options[0][0]; }
+    else if(type==='textarea') { el=document.createElement('textarea'); el.placeholder=placeholder; el.value=value||''; }
+    else { el=document.createElement('input'); el.type='text'; el.placeholder=placeholder; el.value=value||''; }
+    el.onfocus=()=>pushHistory(); el.onchange=()=>onChange(el.value); if(type==='input') el.oninput=()=>onChange(el.value); wrap.append(el); return wrap;
+  }
+  function updateAnn(key,value) { const a=selectedAnnotation(); if(!a) return; a[key]=value; saveSoon(); if(key==='label'||key==='type') draw(); renderList(); }
+  function renderAiMetrics(host, im) {
+    if(!im?.aiMetrics) return;
+    const m=im.aiMetrics, box=document.createElement('div'); box.className='box-coords'; box.style.marginTop='12px';
+    const cost=Number(m.estimatedCostUsd||0).toFixed(6);
+    box.innerHTML=`<div class="box-coords-title">AI generation details</div><div class="coords-grid"><div>Input: ${Number(m.inputTokens||0).toLocaleString()}</div><div>Cached: ${Number(m.cachedTokens||0).toLocaleString()}</div><div>Output*: ${Number(m.outputTokens||0).toLocaleString()}</div><div>Thinking: ${Number(m.thoughtsTokens||0).toLocaleString()}</div><div>Total: ${Number(m.totalTokens||0).toLocaleString()}</div><div>Time: ${(Number(m.latencyMs||0)/1000).toFixed(1)} s</div><div>Detail: ${escapeHtml(m.imageDetail||'balanced')}</div></div><div style="font-size:10px;color:#647084;margin-top:8px">${escapeHtml(m.model||'Gemini')} · Est. $${cost}</div>${m.summary?`<div style="font-size:10px;color:#647084;margin-top:7px">${escapeHtml(m.summary)}</div>`:''}<div style="font-size:9px;color:#929bab;margin-top:4px">*Includes thinking tokens when reported. Cost is an estimate.</div>`;
+    host.append(box);
+  }
+  function escapeHtml(v) { return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function renderReferenceButton() {
+    const im=activeImage(), btn=$('referenceBtn');
+    btn.disabled=!im || !(im.annotations?.length);
+    btn.classList.toggle('ai-active',!!im?.aiReference);
+    btn.textContent=im?.aiReference?'★ AI example selected':'☆ Use as AI example';
+    btn.title=im?.aiReference?'Remove this image from AI examples':'Mark this annotated image as an AI reference example';
+  }
+  function renderBoxList(host) {
+    const im=activeImage(); if(!im) return;
+    const section=document.createElement('div'); section.className='box-list'; const head=document.createElement('div'); head.className='box-list-head'; const label=document.createElement('span'); label.className='panel-title'; label.textContent='Boxes on this image'; const n=document.createElement('span'); n.className='count'; n.textContent=im.annotations.length; head.append(label,n); section.append(head);
+    if(!im.annotations.length) { const d=document.createElement('div'); d.className='empty-detail'; d.textContent='No boxes yet. Choose Draw box or use 2-corner.'; section.append(d); }
+    im.annotations.forEach((a,i)=>{const b=document.createElement('div'); b.className='box-item'+(a.id===state.selectedId?' active':''); const ix=document.createElement('span');ix.className='box-index';ix.textContent=i+1;const text=document.createElement('span');text.className='box-item-label';text.textContent=a.label||'Untitled box';const t=document.createElement('span');t.className='box-item-type';t.textContent=a.type||'product';b.append(ix,text,t);b.onclick=()=>{state.selectedId=a.id;renderDetails();draw();};section.append(b);}); host.append(section);
+  }
+  function renderAll() {
+    $('projectName').value=state.projectName; $('imageCount').textContent=state.images.length+' files';
+    const done=state.images.filter(i=>i.status==='annotated').length, skipped=state.images.filter(i=>i.status==='skipped').length, finished=done+skipped, pct=state.images.length?Math.round(finished/state.images.length*100):0;
+    $('queueSummary').textContent=`${done} annotated · ${skipped} skipped`; $('queuePercent').textContent=pct+'%';
+    $('annotationCount').textContent=(activeImage()?.annotations?.length||0)+' boxes'; $('imageDimensions').textContent=activeImage()?.width?`${activeImage().width} × ${activeImage().height}`:'No image selected';
+    $('skipBtn').disabled=!activeImage(); $('doneBtn').disabled=!activeImage(); $('prevBtn').disabled=state.activeIndex<=0; $('nextBtn').disabled=state.activeIndex<0||state.activeIndex>=state.images.length-1;
+    $('doneBtn').textContent=activeImage()?.status==='annotated'?'Done ✓':'Mark done →'; $('skipBtn').textContent=activeImage()?.status==='skipped'?'Skipped':'Skip image';
+    renderList(); renderDetails(); renderReferenceButton(); updateUndoRedo(); draw();
+  }
+  async function selectImage(i) { if(i<0||i>=state.images.length) return; state.activeIndex=i;state.selectedId=null;state.history=[];state.future=[];state.twoTapStart=null;await loadActiveImage(); }
+
+  async function addFiles(fileList) {
+    const files=Array.from(fileList||[]).filter(f=>f.type.startsWith('image/'));
+    if(!files.length) { toast('No supported image files found.'); return; }
+    const byPath=new Map();
+    state.images.forEach(im=>{byPath.set(im.relativePath||im.name,im); if(!byPath.has(im.name))byPath.set(im.name,im);});
+    let added=0, relinked=0;
+    for(const f of files) {
+      const rel=f.webkitRelativePath || f.name; const match=byPath.get(rel)||byPath.get(f.name);
+      if(match) {
+        if(!match.blob) { match.blob=f; match.name=f.name; match.fileSize=f.size; match.previewUrl=URL.createObjectURL(f); relinked++; }
+        continue;
+      }
+      const previewUrl=URL.createObjectURL(f);
+      const item={id:uid('img'),name:f.name,relativePath:rel,blob:f,fileSize:f.size,width:null,height:null,status:'pending',annotations:[],previewUrl};
+      state.images.push(item); byPath.set(rel,item); byPath.set(f.name,item); added++;
+    }
+    if(added||relinked) { if(state.activeIndex<0) state.activeIndex=0; await selectImage(state.activeIndex); saveSoon(); toast(`${added} added · ${relinked} relinked`); }
+    else toast('These images are already in the workspace.');
+  }
+  function nextImage(delta) { if(!state.images.length) return; const ni=clamp(state.activeIndex+delta,0,state.images.length-1); if(ni!==state.activeIndex) selectImage(ni); }
+  function skipImage() { const im=activeImage(); if(!im) return; im.status='skipped'; saveSoon(); if(state.activeIndex<state.images.length-1) selectImage(state.activeIndex+1); else renderAll(); toast('Image skipped'); }
+  function markDone() { const im=activeImage(); if(!im) return; im.status='annotated';saveSoon(); if(state.activeIndex<state.images.length-1) selectImage(state.activeIndex+1); else renderAll();toast('Image marked done'); }
+  function deleteSelected() { const im=activeImage(),a=selectedAnnotation(); if(!im||!a) return; pushHistory(); im.annotations=im.annotations.filter(x=>x.id!==a.id);state.selectedId=null;if(!im.annotations.length&&im.status==='annotated')im.status='pending';saveSoon();renderAll(); }
+  function duplicateSelected() { const a=selectedAnnotation(), im=activeImage(); if(!a||!im) return; pushHistory(); const b=clone(a);b.id=uid('box');b.bbox={...a.bbox,x:clamp(a.bbox.x+.02,0,1-a.bbox.w),y:clamp(a.bbox.y+.02,0,1-a.bbox.h)};b.label=(a.label||'Product block')+' copy';im.annotations.push(b);state.selectedId=b.id;saveSoon();renderAll(); }
+
+  function exportDocument() { const payload=serializableProject(); const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); download(blob,slug(state.projectName||'shelfscope')+'-annotations.json'); toast('JSON exported'); }
+  function download(blob,name) { const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000); }
+  function slug(s){return (s||'dataset').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'dataset';}
+  async function exportFolder() {
+    const payload=serializableProject();
+    if(window.showDirectoryPicker) {
+      try {
+        const root=await window.showDirectoryPicker({mode:'readwrite'});
+        const out=await root.getDirectoryHandle('shelfscope-output',{create:true});
+        const json=await out.getFileHandle('annotations.json',{create:true}); const w=await json.createWritable(); await w.write(JSON.stringify(payload,null,2)); await w.close();
+        const imagesDir=await out.getDirectoryHandle('images',{create:true});
+        for(const im of state.images) { if(!im.blob) continue; const rel=(im.relativePath||im.name).replace(/^.*?\//, (im.relativePath||'').includes('/')?'':''); const parts=(im.relativePath||im.name).split('/').filter(Boolean); let dir=imagesDir; for(const p of parts.slice(0,-1)) dir=await dir.getDirectoryHandle(safeName(p),{create:true}); const fh=await dir.getFileHandle(safeName(parts[parts.length-1]||im.name),{create:true});const wr=await fh.createWritable();await wr.write(im.blob);await wr.close(); }
+        toast('Saved to shelfscope-output folder'); return;
+      } catch(e) { if(e.name==='AbortError') return; console.warn(e); toast('Folder save unavailable. Creating ZIP instead.'); }
+    }
+    const entries=[{name:'shelfscope-output/annotations.json',data:new TextEncoder().encode(JSON.stringify(payload,null,2))}];
+    for(const im of state.images) if(im.blob) entries.push({name:'shelfscope-output/images/'+(im.relativePath||im.name).split('/').map(safeName).join('/'),data:new Uint8Array(await im.blob.arrayBuffer())});
+    const zip=makeZip(entries); download(new Blob([zip],{type:'application/zip'}),slug(state.projectName||'shelfscope')+'-dataset.zip'); toast('Dataset ZIP exported');
+  }
+  function safeName(n){return (n||'file').replace(/[<>:"\\|?*\x00-\x1f]/g,'_').replace(/^\.+$/,'_');}
+  function crc32(data) { let c=~0; for(let i=0;i<data.length;i++){c^=data[i];for(let k=0;k<8;k++)c=(c>>>1)^((c&1)?0xedb88320:0);}return (~c)>>>0; }
+  function u16(n){return [n&255,(n>>>8)&255];} function u32(n){return [n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255];}
+  function makeZip(entries) {
+    const enc=new TextEncoder(); let local=[],central=[],offset=0;
+    const dt=new Date(),time=((dt.getHours()<<11)|(dt.getMinutes()<<5)|(dt.getSeconds()>>1)),date=(((dt.getFullYear()-1980)<<9)|((dt.getMonth()+1)<<5)|dt.getDate());
+    for(const e of entries) {const name=enc.encode(e.name),data=e.data,crc=crc32(data);const lh=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(0),...u16(0),...u16(time),...u16(date),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),...u16(0),...name]);local.push(lh,data);const ch=new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0),...u16(0),...u16(time),...u16(date),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(offset),...name]);central.push(ch);offset+=lh.length+data.length;}
+    const centralSize=central.reduce((s,a)=>s+a.length,0),end=new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(entries.length),...u16(entries.length),...u32(centralSize),...u32(offset),...u16(0)]);
+    const total=offset+centralSize+end.length,out=new Uint8Array(total);let p=0;for(const a of local){out.set(a,p);p+=a.length;}for(const a of central){out.set(a,p);p+=a.length;}out.set(end,p);return out;
+  }
+  async function importJson(file) {
+    try {
+      const data=JSON.parse(await file.text()); const list=data.images||[]; if(!Array.isArray(list)) throw new Error('Invalid images list'); state.aiUsage=data.ai_usage||data.aiUsage||[];
+      const current=new Map(state.images.map(im=>[im.relativePath||im.name,im]));
+      const restored=list.map(item=>{
+        const path=item.relative_path||item.file_name, existing=current.get(path)||current.get(item.file_name);
+        const anns=(item.annotations||[]).map(a=>{let b=a.bbox_xywh_normalized;if(!b&&Array.isArray(a.box_2d)){const [y1,x1,y2,x2]=a.box_2d;b={x:x1/1000,y:y1/1000,width:(x2-x1)/1000,height:(y2-y1)/1000};}return {id:a.id||uid('box'),type:a.type||'product',label:a.label||'',section:a.section||'',category:a.category||'',notes:a.notes||'',source:a.source||'manual',bbox:{x:b?.x??0,y:b?.y??0,w:b?.width??0,h:b?.height??0}};});
+        return existing?{...existing,annotations:anns,status:item.status|| (anns.length?'annotated':'pending'),aiReference:!!item.is_ai_reference,aiMetrics:item.ai_metrics||existing.aiMetrics}:{id:item.image_id||uid('img'),name:item.file_name||path||'missing image',relativePath:path||'',blob:null,width:item.width,height:item.height,fileSize:item.file_size||0,status:item.status||'pending',annotations:anns,aiReference:!!item.is_ai_reference,aiMetrics:item.ai_metrics||null};
+      });
+      state.images=restored;state.aiUsage=data.ai_usage||state.aiUsage||[];state.projectName=data.project_name||'Imported dataset';state.activeIndex=state.images.length?0:-1;state.selectedId=null;state.history=[];state.future=[];$('projectName').value=state.projectName;if(state.activeIndex>=0)await loadActiveImage();renderAll();saveSoon();toast('Annotation JSON imported. Add source images to relink any missing files.');
+    } catch(e) { console.error(e);toast('Could not read this annotation JSON.'); }
+  }
+
+  // ---------------- Gemini-assisted annotation ----------------
+  const DEFAULT_AI_INSTRUCTIONS = $('aiInstructions').value;
+  const AI_DETAIL = { economy:{maxEdge:1024,quality:.78}, balanced:{maxEdge:1600,quality:.86}, high:{maxEdge:2560,quality:.9} };
+  async function loadAiConfig() {
+    try {
+      const r=await fetch('/api/config'); if(!r.ok) throw new Error('Local AI server is not responding');
+      state.aiConfig=await r.json();
+      const pill=$('aiServerStatus');
+      if(state.aiConfig.configured){pill.textContent=`Ready · ${state.aiConfig.model}`;pill.className='ai-pill ready';}
+      else {pill.textContent='API key not configured';pill.className='ai-pill error';}
+      if(!$('aiModal').classList.contains('hidden')) renderAiModal();
+    } catch(e) { state.aiConfig=null; const pill=$('aiServerStatus'); pill.textContent='Start the local server to enable AI'; pill.className='ai-pill error'; if(!$('aiModal').classList.contains('hidden')) renderAiModal(); }
+  }
+  function toggleAiReference() {
+    const im=activeImage(); if(!im) return;
+    if(im.aiReference) {im.aiReference=false;toast('Removed from AI examples');}
+    else {
+      if(!(im.annotations?.length)){toast('Add at least one annotation before using this as an example.');return;}
+      const refs=state.images.filter(x=>x.aiReference);
+      if(refs.length>=2){toast('You can select up to two AI examples. Remove one first.');return;}
+      im.aiReference=true; im.status='annotated'; toast('Image added as an AI example');
+    }
+    saveSoon();renderAll();
+  }
+  function openAiModal() {
+    if(!state.images.length){toast('Load images before using AI.');return;}
+    renderAiModal(); $('aiModal').classList.remove('hidden'); loadAiConfig();
+  }
+  function renderAiModal() {
+    const refs=state.images.filter(x=>x.aiReference);
+    $('aiRefCount').textContent=`${refs.length} / 2 selected`;
+    const host=$('aiReferenceSummary'); host.innerHTML='';
+    if(!refs.length){const span=document.createElement('span');span.className='muted-note';span.textContent='No reference examples selected. Manually annotate one or two images and click “Use as AI example”.';host.append(span);}
+    refs.forEach(im=>{const chip=document.createElement('span');chip.className='ai-ref-chip';const text=document.createElement('span');text.textContent=`${im.name} · ${im.annotations.length} boxes`;const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Remove example';remove.onclick=()=>{im.aiReference=false;saveSoon();renderAiModal();renderAll();};chip.append(text,remove);host.append(chip);});
+    const replace=$('aiReplaceExisting').checked;
+    const targets=state.images.filter(im=>!im.aiReference&&(replace||!(im.annotations?.length)));
+    $('aiTargetSummary').textContent=`${targets.length} images will be processed · ${state.images.length-refs.length-targets.length} will be left unchanged`;
+    $('startAiBtn').disabled=state.aiRunning||!refs.length||!targets.length||!state.aiConfig?.configured;
+    if(!state.aiConfig?.configured)$('aiServerStatus').textContent='Local server / API key unavailable';
+  }
+  async function blobToBase64(blob) {
+    const buf=await blob.arrayBuffer(), bytes=new Uint8Array(buf); let binary='';
+    for(let i=0;i<bytes.length;i+=0x8000) binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+0x8000,bytes.length)));
+    return btoa(binary);
+  }
+  async function prepareAiImage(im, detail) {
+    if(!im.blob) throw new Error(`${im.name}: source image is not loaded. Re-import the image folder first.`);
+    const bitmap=await imageFromBlob(im.blob), dims=AI_DETAIL[detail]||AI_DETAIL.balanced;
+    const originalWidth=bitmap.width||bitmap.naturalWidth, originalHeight=bitmap.height||bitmap.naturalHeight;
+    const longest=Math.max(originalWidth,originalHeight),scale=Math.min(1,dims.maxEdge/longest);
+    const w=Math.max(1,Math.round(originalWidth*scale)),h=Math.max(1,Math.round(originalHeight*scale));
+    const c=document.createElement('canvas');c.width=w;c.height=h;const cctx=c.getContext('2d',{alpha:false});cctx.drawImage(bitmap,0,0,w,h);
+    const out=await new Promise((resolve,reject)=>c.toBlob(b=>b?resolve(b):reject(new Error('Image compression failed')),'image/jpeg',dims.quality));
+    if(bitmap.close) bitmap.close();
+    return {name:im.name,mimeType:'image/jpeg',data:await blobToBase64(out),width:im.width||originalWidth,height:im.height||originalHeight,sentWidth:w,sentHeight:h,originalSize:im.blob.size,sentSize:out.size};
+  }
+  function annotationForAi(a, im) {
+    const b=a.bbox||{x:0,y:0,w:0,h:0},x=Math.max(0,Math.min(1,b.x)),y=Math.max(0,Math.min(1,b.y)),w=Math.max(0,Math.min(1-x,b.w)),h=Math.max(0,Math.min(1-y,b.h));
+    return {type:a.type||'product',label:a.label||'',section:a.section||'',category:a.category||'',notes:a.notes||'',box_2d:[Math.round(y*1000),Math.round(x*1000),Math.round((y+h)*1000),Math.round((x+w)*1000)]};
+  }
+  async function requestAiAnnotation(target, referencePayloads, userInstructions, detail) {
+    const targetPayload=await prepareAiImage(target,detail);
+    const refs=referencePayloads.map(({image,annotations})=>({image,annotations}));
+    const started=performance.now();
+    const r=await fetch('/api/annotate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:targetPayload,references:refs,userInstructions,detail})});
+    const body=await r.json().catch(()=>({error:'The AI server returned an unreadable response.'}));
+    if(!r.ok) {const error=new Error(body.error||`Gemini request failed (${r.status})`);error.details=body;throw error;}
+    return {...body,clientLatencyMs:Math.round(performance.now()-started),sentImage:{width:targetPayload.sentWidth,height:targetPayload.sentHeight,size:targetPayload.sentSize}};
+  }
+  function applyAiAnnotations(im, result, replace) {
+    if(!Array.isArray(result.annotations)) throw new Error('Gemini response does not contain an annotations array.');
+    const incoming=[];
+    for(const item of result.annotations) {
+      const box=item.box_2d;
+      if(!Array.isArray(box)||box.length!==4||!box.every(Number.isFinite)) continue;
+      const [y1,x1,y2,x2]=box.map(v=>Math.max(0,Math.min(1000,Number(v))));
+      if(y2<=y1||x2<=x1) continue;
+      incoming.push({id:uid('box'),type:['product','shelf','fixture','other'].includes(item.type)?item.type:'product',label:String(item.label||'Unlabelled product block'),section:String(item.section||''),category:String(item.category||''),notes:String(item.notes||''),source:'ai',bbox:{x:x1/1000,y:y1/1000,w:(x2-x1)/1000,h:(y2-y1)/1000}});
+    }
+    if(replace) im.annotations=[];
+    im.annotations.push(...incoming);
+    im.status='ai_draft';
+    return incoming.length;
+  }
+  function logAiProgress(message,kind='') { const line=document.createElement('div');line.className=kind==='error'?'ai-log-error':kind==='ok'?'ai-log-ok':'';line.textContent=message;$('aiProgressLog').prepend(line); }
+  function updateAiProgress(done,total,name='') { $('aiProgressCount').textContent=`${done} / ${total}`;$('aiProgressFill').style.width=`${total?done/total*100:0}%`;$('aiProgressLabel').textContent=name|| (done>=total?'Completed':'Annotating images…'); }
+  async function startAiAnnotation() {
+    if(state.aiRunning)return;
+    const references=state.images.filter(im=>im.aiReference);
+    if(!references.length||references.length>2){toast('Select one or two annotated AI examples first.');return;}
+    if(references.some(im=>!im.blob)){toast('Re-import the source image folder to load reference images.');return;}
+    const replace=$('aiReplaceExisting').checked;
+    const targets=state.images.filter(im=>!im.aiReference&&(replace||!(im.annotations?.length)));
+    if(!targets.length){toast('No target images available.');return;}
+    state.aiRunning=true;$('aiProgress').classList.remove('hidden');$('aiProgressLog').innerHTML='';$('startAiBtn').disabled=true;$('closeAiModalBtn').disabled=true;
+    const detail=$('aiResolution').value, instructions=$('aiInstructions').value.trim()||DEFAULT_AI_INSTRUCTIONS;
+    updateAiProgress(0,targets.length,'Preparing reference examples…');
+    try {
+      const referencePayloads=[];
+      for(const im of references){const image=await prepareAiImage(im,detail);referencePayloads.push({image,annotations:im.annotations.map(a=>annotationForAi(a,im))});}
+      let cursor=0,done=0,ok=0,fail=0;
+      async function worker(){while(true){const index=cursor++;if(index>=targets.length)return;const im=targets[index];updateAiProgress(done,targets.length,`Annotating ${im.name}…`);
+        try {
+          const result=await requestAiAnnotation(im,referencePayloads,instructions,detail);
+          const count=applyAiAnnotations(im,result,replace);
+          const u=result.usage||{},est=result.estimatedCost||{};
+          im.aiMetrics={model:result.model||state.aiConfig?.model||'Gemini',inputTokens:Number(u.inputTokens||0),cachedTokens:Number(u.cachedTokens||0),outputTokens:Number(u.outputTokens||0),thoughtsTokens:Number(u.thoughtsTokens||0),candidateTokens:Number(u.candidateTokens||0),totalTokens:Number(u.totalTokens||0),latencyMs:Number(result.latencyMs||result.clientLatencyMs||0),estimatedCostUsd:Number(est.usd||0),priceTier:est.tier||'configured estimate',imageDetail:detail,summary:result.summary||'',generatedAt:new Date().toISOString(),promptVersion:result.promptVersion||'default'};
+          state.aiUsage.push({imageName:im.name,model:im.aiMetrics.model,...im.aiMetrics});
+          ok++;logAiProgress(`✓ ${im.name}: ${count} boxes · ${Number(im.aiMetrics.totalTokens).toLocaleString()} tokens · $${im.aiMetrics.estimatedCostUsd.toFixed(6)}`,'ok');
+        } catch(e) {
+          fail++;im.aiError=String(e.message||e);
+          const failure=e.details||{};
+          if(failure.usage||failure.estimatedCost||failure.latencyMs!=null) {
+            const u=failure.usage||{},est=failure.estimatedCost||{},d=failure.diagnostics||{};
+            state.aiUsage.push({
+              imageName:im.name,model:failure.model||state.aiConfig?.model||'Gemini',
+              inputTokens:Number(u.inputTokens||0),cachedTokens:Number(u.cachedTokens||0),
+              outputTokens:Number(u.outputTokens||0),thoughtsTokens:Number(u.thoughtsTokens||0),
+              candidateTokens:Number(u.candidateTokens||0),totalTokens:Number(u.totalTokens||0),
+              latencyMs:Number(failure.latencyMs||0),estimatedCostUsd:Number(est.usd||0),
+              priceTier:est.tier||'configured estimate',failureReason:failure.failureReason||'request_failed',
+              failureMessage:im.aiError,diagnostics:d,responseText:typeof failure.responseText==='string'?failure.responseText:''
+            });
+          }
+          logAiProgress(`✕ ${im.name}: ${im.aiError}`,'error');
+        }
+        done++;saveSoon();renderAll();updateAiProgress(done,targets.length,done===targets.length?'AI annotation finished':'Annotating images…');
+      }}
+      await Promise.all(Array.from({length:Math.min(2,targets.length)},()=>worker()));
+      $('aiProgressLabel').textContent=`Finished · ${ok} successful · ${fail} failed`;
+      if(ok){const first=targets.find(im=>im.aiMetrics?.generatedAt);if(first){const idx=state.images.indexOf(first);await selectImage(idx);}toast(`${ok} images annotated by AI. Review the draft boxes before marking done.`);}
+      if(fail)toast(`${fail} images could not be annotated. See the run log.`);
+      $('aiUsageBtn').textContent=`AI usage · ${state.aiUsage.length}`;renderAiUsage();
+    } catch(e) {logAiProgress(e.message||String(e),'error');toast('AI annotation could not start.');}
+    finally {state.aiRunning=false;$('closeAiModalBtn').disabled=false;renderAiModal();saveSoon();}
+  }
+  function renderAiUsage() {
+    const list=state.aiUsage||[],input=list.reduce((n,x)=>n+Number(x.inputTokens||0),0),output=list.reduce((n,x)=>n+Number(x.outputTokens||0),0),total=list.reduce((n,x)=>n+Number(x.totalTokens||0),0),cost=list.reduce((n,x)=>n+Number(x.estimatedCostUsd||0),0),ms=list.reduce((n,x)=>n+Number(x.latencyMs||0),0);
+    $('usageRequests').textContent=list.length.toLocaleString();$('usageTokens').textContent=total.toLocaleString();$('usageCost').textContent='$'+cost.toFixed(6);$('usageTime').textContent=(ms/1000).toFixed(1)+' s';
+    const body=$('usageRows');body.innerHTML='';
+    if(!list.length){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=9;cell.className='muted-note';cell.textContent='No AI requests yet.';row.append(cell);body.append(row);return;}
+    list.slice().reverse().forEach(x=>{
+      const row=document.createElement('tr');
+      [x.imageName||'Image',Number(x.inputTokens||0).toLocaleString(),Number(x.cachedTokens||0).toLocaleString(),Number(x.outputTokens||0).toLocaleString(),Number(x.thoughtsTokens||0).toLocaleString(),Number(x.totalTokens||0).toLocaleString(),(Number(x.latencyMs||0)/1000).toFixed(1)+' s','$'+Number(x.estimatedCostUsd||0).toFixed(6)].forEach(v=>{const td=document.createElement('td');td.textContent=v;row.append(td);});
+      const failureCell=document.createElement('td');
+      if(x.failureReason){
+        failureCell.className='usage-error';
+        const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');
+        summary.textContent=x.failureReason;
+        pre.textContent=JSON.stringify({message:x.failureMessage,diagnostics:x.diagnostics,responseText:x.responseText},null,2);
+        details.append(summary,pre);failureCell.append(details);
+      } else failureCell.textContent='—';
+      row.append(failureCell);body.append(row);
+    });
+  }
+  function exportAiUsage(){const payload={exported_at:new Date().toISOString(),model:state.aiConfig?.model||null,ai_usage:state.aiUsage||[]};download(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),'shelfscope-ai-usage.json');}
+
+  $('addFilesBtn').onclick=()=>$('fileInput').click(); $('addFolderBtn').onclick=()=>$('folderInput').click();
+  $('referenceBtn').onclick=toggleAiReference; $('aiAnnotateBtn').onclick=openAiModal; $('aiUsageBtn').onclick=()=>{renderAiUsage();$('aiUsageModal').classList.remove('hidden');};
+  $('closeAiModalBtn').onclick=()=>{if(!state.aiRunning)$('aiModal').classList.add('hidden');}; $('closeUsageModalBtn').onclick=()=>$('aiUsageModal').classList.add('hidden'); $('startAiBtn').onclick=startAiAnnotation; $('exportUsageBtn').onclick=exportAiUsage;
+  $('aiReplaceExisting').onchange=renderAiModal;
+  $('fileInput').onchange=e=>{addFiles(e.target.files);e.target.value='';}; $('folderInput').onchange=e=>{addFiles(e.target.files);e.target.value='';};
+  $('importJsonBtn').onclick=()=>$('jsonInput').click(); $('jsonInput').onchange=e=>{if(e.target.files[0])importJson(e.target.files[0]);e.target.value='';};
+  $('exportBtn').onclick=exportFolder; $('undoBtn').onclick=undo; $('redoBtn').onclick=redo;
+  $('selectTool').onclick=()=>setTool('select');$('drawTool').onclick=()=>setTool('draw');$('twoTapTool').onclick=()=>setTool('twoTap');
+  $('addBoxBtn').onclick=()=>{setTool('draw');toast('Drag on the image to create a box.');};
+  $('zoomInBtn').onclick=()=>zoom(1.2);$('zoomOutBtn').onclick=()=>zoom(1/1.2);$('fitBtn').onclick=()=>fitImage();
+  wrap.addEventListener('wheel',e=>{if(!state.view||!state.bitmap)return;e.preventDefault();if(e.ctrlKey||e.metaKey){const r=wrap.getBoundingClientRect();zoomAt(Math.exp(-e.deltaY*.002),e.clientX-r.left,e.clientY-r.top);}else{state.view.x-=e.deltaX;state.view.y-=e.deltaY;clampView();draw();}},{passive:false});
+  function zoom(factor){if(!state.view||!state.bitmap)return;const r=wrap.getBoundingClientRect();zoomAt(factor,r.width/2,r.height/2);}
+  function zoomAt(factor,cx,cy){if(!state.view||!state.bitmap)return;const v=state.view,ratio=clamp(factor,.2,5),nw=clamp(v.w*ratio,state.fit.w*.5,state.fit.w*8),nh=clamp(v.h*ratio,state.fit.h*.5,state.fit.h*8),actual=nw/v.w;state.view={x:cx-(cx-v.x)*actual,y:cy-(cy-v.y)*actual,w:nw,h:nh};clampView();draw();}
+  function clampView(){if(!state.view)return;const r=wrap.getBoundingClientRect(),v=state.view,visible=70;v.x=clamp(v.x,-v.w+visible,r.width-visible);v.y=clamp(v.y,-v.h+visible,r.height-visible);}
+  $('skipBtn').onclick=skipImage;$('doneBtn').onclick=markDone;$('imageSearch').oninput=renderList;$('prevBtn').onclick=()=>nextImage(-1);$('nextBtn').onclick=()=>nextImage(1);$('helpBtn').onclick=()=>$('helpModal').classList.remove('hidden');
+  $('projectName').oninput=e=>{state.projectName=e.target.value;saveSoon();};
+  document.addEventListener('keydown',e=>{
+    const target=e.target,typing=target&&(target.tagName==='INPUT'||target.tagName==='TEXTAREA'||target.tagName==='SELECT'||target.isContentEditable);
+    if(e.code==='Space'&&!typing){e.preventDefault();state.spaceDown=true;canvas.style.cursor='grab';return;}
+    if(typing) return;
+    const mod=e.metaKey||e.ctrlKey;
+    if(mod&&e.key.toLowerCase()==='z'&&!e.shiftKey){e.preventDefault();undo();return;}
+    if((mod&&e.shiftKey&&e.key.toLowerCase()==='z')||(mod&&e.key.toLowerCase()==='y')){e.preventDefault();redo();return;}
+    if(e.key==='Delete'||e.key==='Backspace'){if(state.selectedId){e.preventDefault();deleteSelected();}return;}
+    if(e.key==='ArrowLeft'){e.preventDefault();nextImage(-1);return;} if(e.key==='ArrowRight'){e.preventDefault();nextImage(1);return;}
+    if(e.key.toLowerCase()==='d')setTool('draw');if(e.key.toLowerCase()==='v')setTool('select');
+    if(e.key==='?')$('helpModal').classList.remove('hidden');
+  });
+  document.addEventListener('keyup',e=>{if(e.code==='Space'){state.spaceDown=false;canvas.style.cursor=state.tool==='select'?'default':'crosshair';wrap.classList.remove('panning');}});
+  window.addEventListener('blur',()=>{state.spaceDown=false;wrap.classList.remove('panning');});
+  $('closeHelpBtn').onclick=()=>$('helpModal').classList.add('hidden');
+  $('helpModal').addEventListener('click',e=>{if(e.target===$('helpModal'))$('helpModal').classList.add('hidden');});
+  $('aiModal').addEventListener('click',e=>{if(e.target===$('aiModal')&&!state.aiRunning)$('aiModal').classList.add('hidden');});
+  $('aiUsageModal').addEventListener('click',e=>{if(e.target===$('aiUsageModal'))$('aiUsageModal').classList.add('hidden');});
+  window.addEventListener('resize',()=>{if(state.bitmap)fitImage();else resizeCanvas();});
+  // Drag-and-drop image import.
+  wrap.addEventListener('dragover',e=>{e.preventDefault();wrap.style.outline='2px solid #9aafff';});
+  wrap.addEventListener('dragleave',()=>wrap.style.outline='');
+  wrap.addEventListener('drop',e=>{e.preventDefault();wrap.style.outline='';const files=Array.from(e.dataTransfer.files||[]).filter(f=>f.type.startsWith('image/'));addFiles(files);});
+
+  function configureShortcutHints(){const mac=/Mac|iPhone|iPad|iPod/i.test(navigator.platform||navigator.userAgent);$('modKey').textContent=mac?'⌘':'Ctrl';$('redoModKey').textContent=mac?'⌘':'Ctrl';}
+  async function init() { configureShortcutHints(); state.db=await openDB(); await restore(); resizeCanvas(); renderAll(); await loadAiConfig(); $('aiUsageBtn').textContent=`AI usage · ${state.aiUsage.length}`; if(!state.db)$('saveStatus').textContent='Session only'; }
+  init();
+})();
+</script>
+</body>
+</html>
